@@ -1,18 +1,19 @@
 {
   "name": "minecraft-laboratory-vol.001",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "",
   "main": "main.js",
   "scripts": {
-    "test": "node ${file}"
+    "test": "node main.js"
   },
   "keywords": [
     "minecraft-laboratory-vol.001"
   ],
   "author": "MC_XiaoHei",
+  "contributors": [
+    "Bluemangoo"
+  ],
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
-    "mineflayer": "^4.8.1",
-    "prismarine-viewer": "^1.24.0"
   }
 }

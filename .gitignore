@@ -105,7 +105,6 @@
 
 # vuepress v2.x temp and cache directory
 */.temp
-*/.cache
 
 # Docusaurus cache and generated files
 */.docusaurus
@@ -131,3 +130,11 @@
 */.yarn/build-state.yml
 */.yarn/install-state.gz
 */.pnp.*
+
+# IntelliJ IDEA
+/.idea/
+
+# Lock File
+*/package-lock.json
+
+/Vol.001 高版本的带宽占用真的大吗？/data/

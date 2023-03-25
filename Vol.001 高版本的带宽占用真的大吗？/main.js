@@ -1,52 +1,100 @@
-const mineflayer = require('mineflayer');
-const mineflayerViewer = require('prismarine-viewer').mineflayer;
-const net = require('net');
+const net = require("net");
+const projectConfig = require("./projectConfig");
+const fs = require("fs");
+const { Worker, isMainThread, parentPort } = require("worker_threads");
 
-const localPort = 32767; // 本地端口
-const remoteHost = '127.0.0.1'; // 远程主机
-const remotePort = 25565; // 远程端口
+if (isMainThread) {
+    let on = true;
+    // let close = () => {
+    // };
 
-// 创建本地TCP服务器
-const server = net.createServer((socket) => {
-  console.log('客户端已连接');
+    const separateThread = new Worker(__filename);
 
-  // 连接到远程服务器
-  const remoteSocket = net.createConnection({
-    host: remoteHost,
-    port: remotePort
-  });
+    function getTime() {
+        return Date.now();
+    }
 
-  // 将本地套接字上的所有数据转发到远程套接字
-  socket.pipe(remoteSocket);
+    function getTime4Log() {
+        return (date => `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`)(new Date());
+    }
 
-  // 将远程套接字上的所有数据转发到本地套接字
-  remoteSocket.pipe(socket);
+    function main() {
+        const config = projectConfig;
+        const server = net.createServer((client) => {
+            console.info(`[${getTime4Log()}] [INFO] - TCP Client connect ${client.remoteAddress}:${client.remotePort}`);
+            fs.writeFileSync(`./data/${client.remotePort}.csv`, `time,byte\n`);
+            const log = byte => separateThread.postMessage([`./data/${client.remotePort}.csv`, `${getTime()},${byte}\n`]);
+            const gameServer = net.connect({ host: config.gameHost, port: config.gamePort }, () => {
+                console.info(`[${getTime4Log()}] [INFO] - TCP Server connected`);
+            });
+            gameServer.on("data", function(chunk) {
+                log(chunk.length);
+                client.write(chunk);
+            });
+            client.on("data", function(chunk) {
+                log(chunk.length);
+                gameServer.write(chunk);
+            });
+            client.on("end", () => {
+                console.info(`[${getTime4Log()}] [INFO] - TCP Client ${client.remoteAddress}:${client.remotePort} disconnect`);
+                gameServer.end();
+            });
+            gameServer.on("end", () => {
+                console.info(`[${getTime4Log()}] [INFO] - TCP Server disconnected`);
+                client.end();
+            });
+            client.on("error", () => {
+                client.end();
+                gameServer.end();
+            });
+            gameServer.on("error", () => {
+                client.end();
+                gameServer.end();
+            });
+            // close = () => {
+            //     client.end();
+            //     gameServer.end();
+            // };
+        });
+        server.listen({ host: config.forwardHost, port: config.forwardPort });
+        return server;
+    }
 
-  // 当远程套接字关闭时关闭本地套接字
-  remoteSocket.on('close', () => {
-    socket.end();
-  });
+    try {
+        fs.mkdirSync("./data");
+    } catch {
+    }
 
-  // 当本地套接字关闭时关闭远程套接字
-  socket.on('close', () => {
-    remoteSocket.end();
-  });
-});
+    const server = main();
 
-// 启动本地TCP服务器
-server.listen(localPort, () => {
-  console.log(`本地服务器已启动，监听端口 ${localPort}`);
-});
 
-function main(){
-    
-    const bot = mineflayer.createBot({
-        host: 'localhost',
-        port: 32767,
-        username: 'Bot'
-    });
-    bot.once('spawn', () => {
-        mineflayerViewer(bot, { port: 1109 });
+    const read = () => {
+        const readline = require("readline").createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        readline.question(`>`, stop => {
+            if (stop === "stop") {
+                on = false;
+            }
+            readline.close();
+        });
+        readline.on("close", () => {
+            if (on) {
+                read();
+            } else {
+                server.close();
+                // close();
+                console.log(`[${getTime4Log()}] [INFO] - Server closed.`);
+            }
+        });
+    };
+
+    read();
+} else {
+
+    parentPort.on("message", (value) => {
+        fs.appendFile(value[0], value[1], () => {
+        });
     });
 }
-main();
