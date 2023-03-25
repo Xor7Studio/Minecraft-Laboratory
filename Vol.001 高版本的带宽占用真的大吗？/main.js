@@ -1,52 +1,45 @@
 const mineflayer = require('mineflayer');
 const mineflayerViewer = require('prismarine-viewer').mineflayer;
 const net = require('net');
+const Throttle = require('throttle');
+const speedometer = require('speedometer');
+const throttleSpeed = 100 * 1024; // 0.1 MB/s
 
-const localPort = 32767; // 本地端口
-const remoteHost = '127.0.0.1'; // 远程主机
-const remotePort = 25565; // 远程端口
+const server = net.createServer((clientSocket) => {
+  const serverSocket = net.connect({ port: 25565, host: 'localhost' });
 
-// 创建本地TCP服务器
-const server = net.createServer((socket) => {
-  console.log('客户端已连接');
+  const clientThrottle = new Throttle(throttleSpeed);
+  const serverThrottle = new Throttle(throttleSpeed);
 
-  // 连接到远程服务器
-  const remoteSocket = net.createConnection({
-    host: remoteHost,
-    port: remotePort
+  const downloadSpeed = speedometer();
+  const uploadSpeed = speedometer();
+
+  clientSocket.pipe(clientThrottle).pipe(serverSocket);
+  serverSocket.pipe(serverThrottle).pipe(clientSocket);
+
+  clientSocket.on('data', (data) => {
+    uploadSpeed(data.length);
   });
 
-  // 将本地套接字上的所有数据转发到远程套接字
-  socket.pipe(remoteSocket);
-
-  // 将远程套接字上的所有数据转发到本地套接字
-  remoteSocket.pipe(socket);
-
-  // 当远程套接字关闭时关闭本地套接字
-  remoteSocket.on('close', () => {
-    socket.end();
+  serverSocket.on('data', (data) => {
+    downloadSpeed(data.length);
   });
 
-  // 当本地套接字关闭时关闭远程套接字
-  socket.on('close', () => {
-    remoteSocket.end();
-  });
+  setInterval(() => {
+    console.log('Download speed: ' + downloadSpeed() + ' bytes/sec');
+    console.log('Upload speed: ' + uploadSpeed() + ' bytes/sec');
+  }, 1000);
+
 });
 
-// 启动本地TCP服务器
-server.listen(localPort, () => {
-  console.log(`本地服务器已启动，监听端口 ${localPort}`);
+server.listen(32767, () => {
+  console.log('TCP proxy server listening on port 32767');
+  // const bot = mineflayer.createBot({
+  //   host: 'localhost',
+  //   port: 32767,
+  //   username: 'Bot'
+  // });
+  // bot.once('spawn', () => {
+  //   mineflayerViewer(bot, { port: 1109 });
+  // });
 });
-
-function main(){
-    
-    const bot = mineflayer.createBot({
-        host: 'localhost',
-        port: 32767,
-        username: 'Bot'
-    });
-    bot.once('spawn', () => {
-        mineflayerViewer(bot, { port: 1109 });
-    });
-}
-main();

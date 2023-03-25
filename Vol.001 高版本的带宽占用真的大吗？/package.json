@@ -13,6 +13,8 @@
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "mineflayer": "^4.8.1",
-    "prismarine-viewer": "^1.24.0"
+    "prismarine-viewer": "^1.24.0",
+    "speedometer": "^1.1.0",
+    "throttle": "^1.0.3"
   }
 }
